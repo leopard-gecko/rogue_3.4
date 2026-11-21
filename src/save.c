@@ -905,6 +905,12 @@ save_game(void)
     }
     if (!s.error && write_save(dest, s.mem, s.len) == 0) {
         free(s.mem);
+        /* The original Rogue displayed the chosen file name before
+           saving. Show it only on success, while curses is still active,
+           so a modern terminal leaves it visible for a short moment. */
+        mpos = 0;
+        msg("File name: %s", dest);
+        rogue_visual_delay(ROGUE_TEXT_NOTICE_DELAY_MS);
         return TRUE;
     }
     free(s.mem);

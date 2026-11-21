@@ -152,6 +152,17 @@ the score ranking appears. The game retains the original ability to hold
 non-weapon items with the `w` command. The terminal and game messages remain
 English-only in this port.
 
+Thrown items are briefly displayed in flight (approximately 30 ms per
+visible square). Continuous movement (uppercase direction keys or numeric
+repeated movement) pauses about 30 ms between visible steps. Ordinary
+single-step movement and monster turns are not delayed. When `jump` is
+enabled, continuous movement retains the original suppressed intermediate
+draws and incurs no extra delay. The startup greeting is displayed for
+about 1000 ms before entering the game screen. After a successful `S` save,
+`File name: ...` remains visible for about 1000 ms before the game exits.
+Save-confirmation and restore messages keep their existing input behavior;
+normal in-game messages and `--More--` are not delayed.
+
 ## Release contents and further documentation
 
 - `src/`: game source, `Makefile`, and historical guide/manual files

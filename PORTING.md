@@ -1237,3 +1237,160 @@ after `6s` between stage 19 and stage 20. All 12 comparisons matched.
 The direct comparison used test-only fixed-seed builds; the release has no
 forced-seed or test-only HP changes. No combat, RNG, item, map or saved-field
 logic was modified in stage 20.
+
+
+## Stage 24 — visible projectile flight on modern terminals (2026-11-21)
+
+The historical `missile()` redraws each visible projectile position without
+waiting. On modern fast terminals the thrown item may be imperceptible.
+A small POSIX `nanosleep()` wrapper, `rogue_visual_delay(milliseconds)`, is
+added in `compat.c` and invoked in `weapons.c` **only after a visible
+projectile step has been drawn**. The interval was initially 50 ms per square (changed to 30 ms in stage 25).
+Interrupted sleeps are resumed for the remaining interval, without busy
+waiting. The duration may be adjusted later based on actual terminal use.
+
+This is a **presentation-only** change. It neither consumes random numbers
+nor advances game turns; invisible steps, ordinary movement, monster AI,
+combat, `jump` and `--More--` behavior remain unchanged. No new game option
+or data field is added. Save `R34SAV01`, the score file and the historical
+rule tables are unmodified. This is deliberately the first phase of the
+animation improvements; continuous-running speed and brief transient messages
+have not been changed.
+
+
+**Stage-24 verification:** The delay function compiled under Clang 17 and
+GCC 14 with C11, `-Wall -Wextra -Wpedantic -Werror` and ASan/UBSan in an
+isolated test. The original 50 ms call took approximately 50.1 ms normally and
+when interrupted by a signal. The changed `weapons.c` and `compat.c`
+passed strict C11 compilation with a temporary curses declaration header.
+The local environment lacks ncurses development headers, so a complete
+regular game build and visual check on macOS were not performed for this
+specific change. The temporary header and the test harness are not included.
+
+
+## Stage 25 — 30 ms projectile and continuous movement timing (2026-11-21)
+
+The visual flight pause added in stage 24 is reduced from 50 ms to **30 ms**
+per visible projectile square. A shared `ROGUE_VISUAL_STEP_DELAY_MS` constant
+is used for projectile flight and newly animated continuous movement.
+
+In `playit()`, the extra 30 ms is applied after drawing the intermediate
+frame of an automatic run (uppercase direction keys, including `f` running)
+or a numeric repeat of a movement direction (`hjklyubn`). This keeps the
+historical order of `look()`, `status()`, drawing, and `command()` intact.
+It does **not** delay ordinary single-step movement or repeated non-movement
+commands such as search. When `jump` is enabled, intermediate redraws and
+visual pauses are both suppressed exactly as before. Other message timing,
+monster AI, combat, random number consumption, saving and scores are unchanged.
+The new delay is only a presentation feature; it adds neither game turns nor
+persisted fields.
+
+**Stage-25 verification (Linux):** Strict C11 Clang/GCC compilation and
+linking succeeded with zero warnings treated as errors. This environment
+used a **test-only curses declaration header** and the system ncurses
+runtime because ncurses development headers were not installed. An isolated
+ASan/UBSan test of the actual `playit()` loop passed nine conditions:
+normal single movement, automatic running, numbered movement, repeated
+search/throwing, and each relevant `jump` setting. The POSIX delay helper
+was measured at approximately 30.1 ms, including interruption by a signal,
+with Clang and GCC. A PTY game test covered starting, moving, quitting,
+saving, and restoring. A fixed-seed test using identical commands compared
+the saved game bytes from the stage-24 and stage-25 builds; both saved data
+blobs were byte-for-byte equal. The fixed seed was injected in **test-only**
+builds and is not present in the distributed source. macOS Terminal.app
+visual pacing after this change remains to be checked by the maintainer;
+Linux measurements do not guarantee exact 30 ms frame pacing on every OS.
+
+
+## Stage 26 — magic effects and transient-message timing audit (2026-11-21)
+
+This is an **audit only**. After comparing the stage-25 implementation with
+its reconstructed Rogue 3.4 reference, no additional artificial sleep was
+introduced in potions, scrolls, generic messages, or monster actions.
+
+| Display path | Observed control flow | Timing decision |
+| --- | --- | --- |
+| Potion of monster detection (`P_MFIND`) | `show_win(hw, ...)` draws the detection overlay, then `wait_for(' ')` | Keep the existing space-key wait; no delay |
+| Potion of magic detection (`P_TFIND`) | When magic is present, `show_win(hw, ...)` waits for space | Keep the existing space-key wait; no delay |
+| Scroll of gold detection (`S_GFIND`) | When gold is present, `show_win(hw, ...)` waits for space | Keep the existing space-key wait; no delay |
+| Scroll of magic mapping (`S_MAP`) | Copies the map into the game window; the result remains visible in later redraws | Do not add a temporary pause |
+| Scroll of identification (`S_IDENT`) | Calls `whatis()` for item selection | Interaction itself waits for input |
+| Lighting, enchanting, monster confusion, potion effects | Describe the effect with `msg(...)`; these are *text* effects rather than animated frames | Keep ordinary message handling |
+| Consecutive messages | `msg()` draws `--More--` and waits for space before replacing a pending message | Keep the existing explicit wait |
+| Ordinary messages | `command()` reads the next key before clearing the previous message | Do not add a universal text delay |
+| Projectile flight / continuous movement | Stage-25 animation paths | Retain 30 ms per visible projectile square / displayed intermediate movement square; `jump` skips intermediate movement redraw/delay |
+
+**Specific note:** Messages such as "The corridor glows and then fades"
+and "Your armor glows faintly for a moment" describe an event; Rogue 3.4
+does not implement a separate animated flash for these actions. Adding a
+150–300 ms sleep after such text would generally make an already-readable
+message linger without adding a visible animation. A new animation would
+be an intentional presentation enhancement, not a correction needed for
+message readability.
+
+**Verification:** Read the complete potion/scroll effect dispatch in
+`potions.c`, the `msg()`, `wait_for()` and `show_win()` paths in `io.c`,
+the command input/clear sequence in `command.c`, and the display loop in
+`main.c`; compared the waiting behavior with the reconstructed original
+`io.c`/`potions.c`. A Linux PTY smoke test verified that a normal `v`
+message remained present pending another command, that the full help overlay
+blocked until space, and that quitting returned normally (exit status 0).
+Clang and GCC C11 compilation/link tests passed with no compiler warnings,
+using a **test-only** curses declaration header plus the system ncurses and
+tinfo runtime libraries. This is **not** a substitute for a regular Linux
+build using `libncurses-dev`, or an actual potion/scroll playthrough on a
+Mac terminal.
+
+**Source and compatibility:** No `.c`, `.h`, `Makefile`, `README.md`, save
+format, or score implementation was changed. Only this `PORTING.md` audit
+entry was added. The established 30 ms delays and original `--More--`
+behavior are unchanged.
+
+
+## Stage 27 — startup and successful-save notices (2026-11-21)
+
+The greeting printed by `main.c` is flushed to the terminal and held for
+**500 ms** before `initscr()` switches to the game screen. This covers both
+normal and wizard greeting text. No delay is added when restoring a game.
+
+The reconstructed 1981 `save.c` printed `File name: ...` after the save
+filename was confirmed. The portable save implementation had omitted this
+notice. It is now restored **only after** `write_save()` succeeds. The
+message is drawn on the existing curses game screen, held for **500 ms**,
+and then the unchanged command loop ends the curses session. Save failure
+remains an ordinary visible error message with no artificial pause.
+
+Both new pauses use the existing `rogue_visual_delay()` POSIX sleep helper
+and the shared `ROGUE_TEXT_NOTICE_DELAY_MS` constant. Projectile flight and
+visible repeated movement still use `ROGUE_VISUAL_STEP_DELAY_MS` (30 ms).
+No random number is drawn, no game turn passes, and no save, score, or
+original game-rule data layout is changed. Normal messages and `--More--`
+retain their existing behavior.
+
+**Stage-27 verification (Linux):** GCC and Clang C11 builds with warnings
+as errors linked successfully to the system ncurses/tinfo runtime using a
+**test-only curses declaration header**; the source ZIP does not include
+this header. In a pseudo-terminal with an 80x24 screen, the greeting
+remained visible for 0.501 s before the curses screen appeared, and the
+successful-save file-name notice remained visible for 0.500 s before
+exit. The resulting save file was present. A save to a nonexistent
+directory displayed the existing error message, did not display the
+success notice, and allowed the player to continue and quit normally.
+This does not replace a native macOS Terminal.app visual check for this
+new timing behavior.
+
+
+## Stage 28 — 1000 ms startup and save notices (2026-11-21)
+
+The two user-facing text notices introduced in stage 27 now remain visible
+for **1000 ms** instead of 500 ms: the greeting shown just before the
+initial curses screen and the `File name: ...` message shown only after a
+successful save. Both call sites continue to use the shared
+`ROGUE_TEXT_NOTICE_DELAY_MS` constant; its value was changed from `500u`
+to `1000u`. The earlier stage-27 timings above are retained as historical
+verification results, not the current configuration.
+
+Projectile flight and visible continuous movement still use the separate
+`ROGUE_VISUAL_STEP_DELAY_MS` constant (30 ms). No save format, game rule,
+random-number call, score handling, or unsuccessful-save behavior changed.
+The timing has not been measured in a native macOS run for this revision.

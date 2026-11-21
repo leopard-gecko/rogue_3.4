@@ -21,6 +21,22 @@ char rogue_glyph(chtype cell)
 #endif
 }
 
+/* Brief visual pause for animations that already refresh the screen.
+ * Only presentation timing changes: this does not take a game turn, read
+ * input, or consume random numbers.  Restart an interrupted sleep so the
+ * requested total delay remains consistent across macOS and Linux. */
+void
+rogue_visual_delay(unsigned int milliseconds)
+{
+    struct timespec remaining;
+    struct timespec interrupted;
+
+    remaining.tv_sec = (time_t)(milliseconds / 1000u);
+    remaining.tv_nsec = (long)(milliseconds % 1000u) * 1000000L;
+    while (nanosleep(&remaining, &interrupted) == -1 && errno == EINTR)
+        remaining = interrupted;
+}
+
 int rogue_erase_char(void)
 {
     struct termios t;

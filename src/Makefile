@@ -1,4 +1,4 @@
-# Rogue 3.4 macOS/Unix compatibility port (stage 23)
+# Rogue 3.4 macOS/Unix compatibility port (stage 28)
 CC ?= cc
 CFLAGS ?= -O2
 # Keep C11 and warning checks even when callers override CFLAGS (e.g., -O0 -g).

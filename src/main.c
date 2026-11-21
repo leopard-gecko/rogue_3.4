@@ -107,6 +107,8 @@ main(int argc, char **argv, char **envp)
     else
 	printf("Hello %s, just a moment while I dig the dungeon...", whoami);
     fflush(stdout);
+    /* Keep the original greeting readable before curses switches screens. */
+    rogue_visual_delay(ROGUE_TEXT_NOTICE_DELAY_MS);
     seed = dnum;
 
     if (initscr() == NULL) {       /* Start up cursor package */
@@ -283,7 +285,19 @@ playit(void)
 	lastscore = purse;
 	wmove(cw, hero.y, hero.x);
 	if (!((running || count) && jump))
+	{
+	    /* Animate only automatic movement, not ordinary one-step moves
+	     * or non-movement commands with a numeric repeat prefix.  This
+	     * refresh occurs before the next repeated command; no extra turn
+	     * or random draw is introduced.  With jump enabled, the original
+	     * intermediate refresh (and our delay) stays suppressed. */
+	    bool continuous_move = running ||
+	        (count > 0 && rogue_countch != '\0' &&
+	         strchr("hjklyubn", rogue_countch) != NULL);
 	    draw(cw);
+	    if (continuous_move)
+	        rogue_visual_delay(ROGUE_VISUAL_STEP_DELAY_MS);
+	}
 	command();
 	if (!running && wasrunning)
 	    door_stop = FALSE;

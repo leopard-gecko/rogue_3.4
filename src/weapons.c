@@ -123,6 +123,10 @@ missile(int ydelta, int xdelta)
 	    {
 		mvwaddch(cw, obj->o_pos.y, obj->o_pos.x, obj->o_type);
 		draw(cw);
+                /* The original refreshed without a pause.  Modern
+                 * terminals otherwise make the projectile hard to see.
+                 * Delay visible flight only, never combat or RNG. */
+                rogue_visual_delay(ROGUE_VISUAL_STEP_DELAY_MS);
 	    }
 	    continue;
 	}
