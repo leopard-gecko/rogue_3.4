@@ -96,6 +96,10 @@ terminal becomes smaller during play, the game pauses until it is enlarged.
 
 ## Playing, saving and scores
 
+For detailed instructions, see the original English guide,
+[A Guide to the Dungeons of Doom (rogue.doc)](src/rogue.doc).
+It explains the goal of the game, screen symbols, commands, items, and combat.
+
 | Action | Command |
 | --- | --- |
 | Start a new game | `./rogue` |
