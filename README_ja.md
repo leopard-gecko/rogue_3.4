@@ -101,6 +101,10 @@ MakefileはOSを判別し、macOSでは `-lcurses`、Linuxでは
 
 ## 操作方法・セーブ・スコア
 
+詳しい遊び方については、原典に付属する英語の案内書
+[A Guide to the Dungeons of Doom（rogue.doc）](src/rogue.doc)を参照してください。
+ゲームの目的、画面の見方、操作コマンド、アイテムや戦闘などの基本が説明されています。
+
 | 操作 | コマンド |
 | --- | --- |
 | 新規ゲームを開始 | `./rogue` |
