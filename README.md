@@ -6,6 +6,8 @@ original game's rules and ASCII presentation, while correcting portability
 and memory-safety issues. It is **not** a byte-identical reproduction of the
 1981 executable.
 
+[日本語版 README](README_ja.md)
+
 ## Historical source
 
 The reference source reconstructs Rogue 3.4 (Michael Toy, Kenneth Arnold and
