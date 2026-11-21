@@ -1,0 +1,68 @@
+# Build the Rogue 3.4 port with the existing src/Makefile.
+# macos-15 is an Apple Silicon runner; macos-15-intel is x86-64.
+name: Build Rogue 3.4
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: macos-arm64
+            runner: macos-15
+          - target: macos-x86_64
+            runner: macos-15-intel
+          - target: linux-x86_64
+            runner: ubuntu-24.04
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install Linux development libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential libncurses-dev libcrypt-dev
+
+      - name: Build
+        working-directory: src
+        run: |
+          make clean
+          make
+
+      - name: Verify executable
+        run: |
+          test -x src/rogue
+          file src/rogue
+
+      - name: Package executable and documentation
+        run: |
+          mkdir -p dist
+          cp src/rogue dist/rogue
+          cp README.md LICENSE dist/
+          tar -czf "rogue34-${{ matrix.target }}.tar.gz" -C dist .
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: rogue34-${{ matrix.target }}
+          path: rogue34-${{ matrix.target }}.tar.gz
+          if-no-files-found: error
+          retention-days: 14
