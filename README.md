@@ -5,16 +5,20 @@ modern C11 compilers and terminal-based systems.
 
 [日本語版 README](README_ja.md)
 
-## Historical source
+## Source code basis
 
-The reference source reconstructs Rogue 3.4 (Michael Toy, Kenneth Arnold and
-Glenn Wichman). The original project's README describes a byte-exact match,
-when built with its modified 2.8BSD toolchain, to the CSRG Archive CD-ROM
-Disc 1 executable `2.8/usr/bin.v7/ucb/rogue` (MD5
-`88f791623b2a684d2555891c0f5b6735`). The historical `rogue.doc`
-corresponds to `2.8/usr/doc/rogue.doc` (MD5
-`e7113c0e9aedca6edf47f2127cfad4f7`); the `rogue.6` manual page is
-from 4.1BSD (MD5 `f84eef587bc38bc0823f2cd029df030b`).
+This port is based on the reconstructed Rogue 3.4 source at
+[rogueforge/rogue3.4](https://github.com/rogueforge/rogue3.4).
+It reconstructs the 1981 game developed by Michael Toy, Kenneth Arnold,
+and Glenn Wichman; it is not the original 1981 source code. According to
+that project's README, building the reconstruction with a modified 2.8BSD
+toolchain produces a byte-exact match to the CSRG Archive CD-ROM Disc 1
+executable `2.8/usr/bin.v7/ucb/rogue`
+(MD5: `88f791623b2a684d2555891c0f5b6735`).
+
+The historical `rogue.doc` corresponds to `2.8/usr/doc/rogue.doc`
+(MD5: `e7113c0e9aedca6edf47f2127cfad4f7`); the `rogue.6` manual page
+is from 4.1BSD (MD5: `f84eef587bc38bc0823f2cd029df030b`).
 
 Those historical documents are included **unchanged** for reference. In
 particular, old save and score filenames mentioned in `rogue.6` describe
