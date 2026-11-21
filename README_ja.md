@@ -4,13 +4,19 @@
 
 [English README](README.md)
 
-## 原典のソースコード
+## 基準としたソースコード
 
-基準としたのは、Michael Toy、Kenneth Arnold、Glenn Wichmanによる
-Rogue 3.4の復元ソースです。復元プロジェクトの元のREADMEによると、
-修正した2.8BSDのツールチェーンでビルドすると、CSRG Archive CD-ROM
-Disc 1の `2.8/usr/bin.v7/ucb/rogue` に収録された実行ファイルと
-バイト単位で一致します（MD5: `88f791623b2a684d2555891c0f5b6735`）。
+本移植版は、Michael Toy、Kenneth Arnold、Glenn Wichmanの3氏が
+1981年に開発したRogue 3.4を再構成したソースコード
+（[rogueforge/rogue3.4](https://github.com/rogueforge/rogue3.4)）を
+基準としています。
+
+この再構成ソースは、当時の実行ファイルなどを基に復元されたもので、
+1981年当時のオリジナルソースそのものではありません。復元プロジェクトの
+READMEによると、修正した2.8BSDのツールチェーンでビルドすると、
+CSRG Archive CD-ROM Disc 1の `2.8/usr/bin.v7/ucb/rogue` に
+収録された実行ファイルとバイト単位で一致します
+（MD5: `88f791623b2a684d2555891c0f5b6735`）。
 
 歴史的資料の `rogue.doc` は `2.8/usr/doc/rogue.doc`
 （MD5: `e7113c0e9aedca6edf47f2127cfad4f7`）に対応し、
