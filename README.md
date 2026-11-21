@@ -126,7 +126,7 @@ directory and filename.
 For example, specify a filename under HOME with `ROGUEOPTS`:
 
 ```sh
-ROGUEOPTS='file=~/保存.save' ./rogue
+ROGUEOPTS='file=~/mygame.save' ./rogue
 ```
 
 A successful normal restore consumes the save file.
