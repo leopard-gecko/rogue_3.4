@@ -1,10 +1,7 @@
 # Rogue 3.4 — macOS / Linux port
 
 This project adapts the reconstructed 1981 Berkeley Rogue 3.4 source for
-modern C11 compilers and terminal-based systems. It aims to preserve the
-original game's rules and ASCII presentation, while correcting portability
-and memory-safety issues. It is **not** a byte-identical reproduction of the
-1981 executable.
+modern C11 compilers and terminal-based systems.
 
 [日本語版 README](README_ja.md)
 
@@ -46,9 +43,6 @@ make
 ./rogue
 ```
 
-On macOS, the build uses the system compiler and curses library without
-Homebrew dependencies.
-
 ### Linux (Debian / Ubuntu)
 
 Install the compiler, make, and development libraries:
@@ -88,10 +82,6 @@ make
 ./rogue
 ```
 
-Raspberry Pi OS (including 32-bit and 64-bit installations) has **not yet
-been tested on Raspberry Pi hardware**; these are the intended build steps,
-not a claim of verified operation on either architecture.
-
 ### Other Linux distributions
 
 Install a C11-capable C compiler, `make`, ncurses development headers/library,
@@ -99,12 +89,6 @@ and the libcrypt development library using your distribution's package manager.
 Then run `make` in `src/`. The Makefile selects `-lcurses` on macOS and
 `-lncurses -lcrypt` on Linux, based on the host OS. If needed, explicitly
 select a compiler with `make CC=clang` or `make CC=gcc`.
-
-**Validation status:** Native macOS compilation and game operation have
-been confirmed by the maintainer. On Linux, Clang/GCC C11 builds and automated
-terminal tests have passed using a test-only curses declaration header and
-the system ncurses runtime; a normal Linux build with `libncurses-dev` and
-Raspberry Pi hardware operation have not been separately verified here.
 
 The game requires a terminal at least **80 columns by 24 rows**. Its
 internal dungeon remains 80×24 when the terminal is larger. When the
@@ -137,33 +121,15 @@ The current defaults are:
 The save filename and HOME directory can contain UTF-8 bytes (for example,
 Japanese characters), spaces, and paths longer than the historical 80-byte
 buffer. Save paths are limited to **511 bytes** in this port, including the
-directory and filename. `ROGUEOPTS=file=~/保存.save` selects a filename under
-HOME without converting its UTF-8 bytes. If the path cannot fit, startup
-reports an error rather than silently cutting it off. The options screen
-remains 80 columns wide and may abbreviate a long path for display; this
-visual limit does not truncate the actual saved filename. Other game text
-remains limited to the historical single-byte presentation.
+directory and filename.
 
-A successful normal restore consumes the save file; an invalid save is
-retained. No automatic conversion of older save or score files is performed.
-Only `S` saves; SIGHUP and SIGTERM exit without saving. Do not restore
-save files obtained from untrusted sources.
+For example, specify a filename under HOME with `ROGUEOPTS`:
 
-On death, an ASCII tombstone stays visible until Return is pressed; then
-the score ranking appears. The game retains the original ability to hold
-non-weapon items with the `w` command. The terminal and game messages remain
-English-only in this port.
+```sh
+ROGUEOPTS='file=~/保存.save' ./rogue
+```
 
-Thrown items are briefly displayed in flight (approximately 30 ms per
-visible square). Continuous movement (uppercase direction keys or numeric
-repeated movement) pauses about 30 ms between visible steps. Ordinary
-single-step movement and monster turns are not delayed. When `jump` is
-enabled, continuous movement retains the original suppressed intermediate
-draws and incurs no extra delay. The startup greeting is displayed for
-about 1000 ms before entering the game screen. After a successful `S` save,
-`File name: ...` remains visible for about 1000 ms before the game exits.
-Save-confirmation and restore messages keep their existing input behavior;
-normal in-game messages and `--More--` are not delayed.
+A successful normal restore consumes the save file.
 
 ## Release contents and further documentation
 
@@ -172,7 +138,6 @@ normal in-game messages and `--More--` are not delayed.
   and portability notes
 - `LICENSE`: redistribution terms
 
-No executable binaries or test-only curses headers are included in the
-source archive. `make clean` removes generated object files and `src/rogue`.
+`make clean` removes generated object files and `src/rogue`.
 The original archive's unused `:ctfix` editor script is omitted from this
 port distribution; it is not part of the build.
