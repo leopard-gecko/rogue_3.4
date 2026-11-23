@@ -750,7 +750,7 @@ shell(void)
             _exit(127);
         }
         execl(sh, "shell", "-i", (char *)NULL);
-        perror("Rogue 3.4: exec shell");
+        perror("No shelly");
         _exit(127);
     }
     if (pid < 0) {

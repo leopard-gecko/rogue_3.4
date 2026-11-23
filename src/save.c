@@ -867,55 +867,132 @@ write_save(const char *path, const unsigned char *data, size_t size)
     return -1;
 }
 
+/* The original prints its filename notice before performing the save.  Hold
+ * that already-refreshed message for a minimum of 200 ms INCLUDING time
+ * spent serializing and writing.  Do not add a full 200 ms after a slow
+ * write.  No game turns, random numbers, or terminal input are involved. */
+static void
+hold_save_notice(const struct timespec *shown_at, int timed)
+{
+    struct timespec now;
+    const int64_t minimum_ns = (int64_t)ROGUE_SAVE_NOTICE_DELAY_MS * 1000000;
+
+    if (timed && clock_gettime(CLOCK_MONOTONIC, &now) == 0) {
+        int64_t elapsed_ns =
+            (int64_t)(now.tv_sec - shown_at->tv_sec) * 1000000000 +
+            (int64_t)(now.tv_nsec - shown_at->tv_nsec);
+        if (elapsed_ns >= minimum_ns)
+            return;
+        if (elapsed_ns >= 0) {
+            int64_t remaining_ns = minimum_ns - elapsed_ns;
+            rogue_visual_delay((unsigned int)((remaining_ns + 999999) / 1000000));
+            return;
+        }
+    }
+    /* Timing failure: ensure the notice is visible for at least 200 ms. */
+    rogue_visual_delay(ROGUE_SAVE_NOTICE_DELAY_MS);
+}
+
 int
 save_game(void)
 {
     struct savebuf s;
     char dest[sizeof file_name];
     int c;
-    if (file_name[0] == '\0') {
-        msg("Set a save filename using the 'o' option first.");
-        return FALSE;
+    int need_name = (file_name[0] == '\0');
+
+    mpos = 0;
+    if (!need_name) {
+        msg("Save file (\"%s\")? ", file_name);
+        do {
+            c = readchar();
+        } while (c != 'y' && c != 'Y' && c != 'n' && c != 'N');
+        /* In original 3.4, 'n' means choose a different name, NOT cancel. */
+        need_name = (c == 'n' || c == 'N');
+        mpos = 0;
     }
-    snprintf(dest, sizeof dest, "%s", file_name);
-    mpos = 0;
-    msg("Save game (\"%s\")? (y/n)", dest);
-    do { c = readchar(); } while (c != 'y' && c != 'Y' && c != 'n' && c != 'N');
-    if (c == 'n' || c == 'N') { msg(""); return FALSE; }
-    memset(&s, 0, sizeof s);
-    s.mem = (unsigned char *)malloc(SAVE_LIMIT);
-    if (s.mem == NULL) { msg("Out of memory saving game."); return FALSE; }
-    s.len = SAVE_HEAD;
-    /* Do not save the confirmation prompt as a message to replay. */
-    mpos = 0;
-    put_game(&s);
-    if (!s.error) {
-        memcpy(s.mem, SAVE_MAGIC, 8);
-        s.mem[8] = (unsigned char)(s.len - SAVE_HEAD);
-        s.mem[9] = (unsigned char)((s.len - SAVE_HEAD) >> 8);
-        s.mem[10] = (unsigned char)((s.len - SAVE_HEAD) >> 16);
-        s.mem[11] = (unsigned char)((s.len - SAVE_HEAD) >> 24);
-        {
-            uint32_t hash = checksum(s.mem + SAVE_HEAD, s.len - SAVE_HEAD);
-            s.mem[12] = (unsigned char)hash;
-            s.mem[13] = (unsigned char)(hash >> 8);
-            s.mem[14] = (unsigned char)(hash >> 16);
-            s.mem[15] = (unsigned char)(hash >> 24);
+
+    for (;;) {
+        struct timespec shown_at;
+        int timed;
+        int save_errno;
+
+        if (need_name) {
+            char name[80];
+            int result;
+            /* If a previous attempt failed, msg() shows the original
+             * --More-- pause before replacing the error with this prompt. */
+            msg("File name: ");
+            mpos = 0;
+            name[0] = '\0';
+            result = get_str(name, cw);
+            if (result == QUIT) {
+                msg("");
+                return FALSE;
+            }
+            if (name[0] == '\0' ||
+                rogue_set_save_path(name, strlen(name)) != 0) {
+                /* Empty filenames cannot be opened. Retain the same
+                 * name-entry loop as the original without unsafe copies. */
+                mpos = 0;
+                msg("Unable to save to %s: invalid filename", name);
+                continue;
+            }
         }
-    }
-    if (!s.error && write_save(dest, s.mem, s.len) == 0) {
-        free(s.mem);
-        /* The original Rogue displayed the chosen file name before
-           saving. Show it only on success, while curses is still active,
-           so a modern terminal leaves it visible for a short moment. */
+
+        snprintf(dest, sizeof dest, "%s", file_name);
+        /* Print BEFORE saving, as the 1981 save_game() did. */
         mpos = 0;
         msg("File name: %s", dest);
-        rogue_visual_delay(ROGUE_TEXT_NOTICE_DELAY_MS);
-        return TRUE;
+        timed = (clock_gettime(CLOCK_MONOTONIC, &shown_at) == 0);
+
+        memset(&s, 0, sizeof s);
+        s.mem = (unsigned char *)malloc(SAVE_LIMIT);
+        if (s.mem == NULL) {
+            hold_save_notice(&shown_at, timed);
+            msg("Out of memory saving game.");
+            return FALSE;
+        }
+        s.len = SAVE_HEAD;
+        /* As before, the confirmation prompt is not persisted as a
+         * replayed message; the filename notice is visible when saving. */
+        mpos = 0;
+        put_game(&s);
+        if (!s.error) {
+            memcpy(s.mem, SAVE_MAGIC, 8);
+            s.mem[8] = (unsigned char)(s.len - SAVE_HEAD);
+            s.mem[9] = (unsigned char)((s.len - SAVE_HEAD) >> 8);
+            s.mem[10] = (unsigned char)((s.len - SAVE_HEAD) >> 16);
+            s.mem[11] = (unsigned char)((s.len - SAVE_HEAD) >> 24);
+            {
+                uint32_t hash = checksum(s.mem + SAVE_HEAD, s.len - SAVE_HEAD);
+                s.mem[12] = (unsigned char)hash;
+                s.mem[13] = (unsigned char)(hash >> 8);
+                s.mem[14] = (unsigned char)(hash >> 16);
+                s.mem[15] = (unsigned char)(hash >> 24);
+            }
+        }
+        if (s.error) {
+            free(s.mem);
+            hold_save_notice(&shown_at, timed);
+            mpos = 0;
+            msg("Unable to save to %s: invalid state", dest);
+            return FALSE;
+        }
+        if (write_save(dest, s.mem, s.len) == 0) {
+            free(s.mem);
+            hold_save_notice(&shown_at, timed);
+            return TRUE;
+        }
+        save_errno = errno;
+        free(s.mem);
+        hold_save_notice(&shown_at, timed);
+        mpos = 0;
+        msg("Unable to save to %s: %s", dest, strerror(save_errno));
+        /* The original allows another filename after a failed fopen().
+         * Preserve the modern atomic write and retry only file I/O errors. */
+        need_name = TRUE;
     }
-    free(s.mem);
-    msg("Unable to save to %s: %s", dest, s.error ? "invalid state" : strerror(errno));
-    return FALSE;
 }
 
 int
@@ -1017,8 +1094,8 @@ restore(char *file, char **envp)
     if (strlen(path) < sizeof file_name)
         strcpy(file_name, path);
     setup();
+    /* The original restore path resumed the screen without a new message. */
     mpos = 0;
-    msg("Game restored.");
     wmove(cw, hero.y, hero.x);
     draw(cw);
     return TRUE;

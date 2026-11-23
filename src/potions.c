@@ -38,11 +38,11 @@ quaff(void)
     switch(obj->o_which)
     {
 	when P_CONFUSE:
-	    /* A second potion extends the existing timer rather than
-	       installing another unconfuse fuse which may expire first. */
-	    if (on(player, ISHUH))
-		lengthen(unconfuse, rnd(8)+HUHDURATION);
-	    else
+	    /* Preserve the reconstructed 3.4 behavior: while already
+	       confused, another dose neither extends the effect nor
+	       consumes a random value. The original inner ISHUH check
+	       was unreachable under this condition. */
+	    if (off(player, ISHUH))
 	    {
 		msg("Wait, what's going on here. Huh? What? Who?");
 		fuse(unconfuse, 0, rnd(8)+HUHDURATION, AFTER);
@@ -404,14 +404,15 @@ read_scroll(void)
 		    cur_weapon->o_hplus++;
 		else
 		    cur_weapon->o_dplus++;
-                /* A non-weapon may be held in Rogue 3.4.  Keep the
-                   original enchantment/uncursing effect without using
-                   its index to look up a weapon name. */
-                if (cur_weapon->o_type == WEAPON)
+                /* Rogue 3.4 indexes the weapon-name table even when the
+                   held item is not a weapon. Preserve that original message
+                   for every in-range index, regardless of item type.  An
+                   invalid index was an out-of-bounds read in the original;
+                   do not attempt to reproduce undefined behavior. */
+                if (cur_weapon->o_which >= 0 &&
+                    cur_weapon->o_which < MAXWEAPONS)
                     msg("Your %s glows blue for a moment.",
-                        w_names[cur_weapon->o_which]);
-                else
-                    msg("What you are holding glows blue for a moment.");
+                        w_names[(unsigned char)cur_weapon->o_which]);
 	    }
 	when S_SCARE:
 	    /*

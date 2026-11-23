@@ -306,7 +306,9 @@ get_str(void *value, WINDOW *win)
  * the string is a series of comma seperated values, with booleans
  * being stated as "name" (true) or "noname" (false), and strings
  * being "name=....", with the string being defined up to a comma
- * or the end of the entire option string.
+ * or the end of the entire option string. As in the original 3.4 parser,
+ * nonempty prefixes of option names are accepted, with optlist order
+ * resolving ambiguous prefixes. Keep the modern bounded copying.
  */
 int
 parse_opts(char *str)
@@ -330,14 +332,23 @@ parse_opts(char *str)
         for (op = optlist; op < &optlist[NUM_OPTS]; op++) {
             size_t op_len = strlen(op->o_name);
             if (op->o_putfunc == put_bool) {
-                if (name_len == op_len && !strncmp(token, op->o_name, op_len))
+                if (name_len > 0 && name_len <= op_len &&
+                    !strncmp(token, op->o_name, name_len))
+                {
                     *(bool *)op->o_opt = TRUE;
-                else if (name_len == op_len + 2 && !strncmp(token, "no", 2)
-                         && !strncmp(token + 2, op->o_name, op_len))
+                    break;
+                }
+                else if (name_len >= 2 && name_len <= op_len + 2 &&
+                         !strncmp(token, "no", 2) &&
+                         !strncmp(token + 2, op->o_name, name_len - 2))
+                {
                     *(bool *)op->o_opt = FALSE;
+                    break;
+                }
                 continue;
             }
-            if (equal == NULL || name_len != op_len || strncmp(token, op->o_name, op_len))
+            if (equal == NULL || name_len == 0 || name_len > op_len ||
+                strncmp(token, op->o_name, name_len))
                 continue;
             {
                 char *dest = op->o_opt;

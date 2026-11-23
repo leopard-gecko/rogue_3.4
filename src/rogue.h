@@ -572,6 +572,7 @@ int rogue_draw(WINDOW *window);
 /* Visual timing only: no game turn or RNG consumption. */
 #define ROGUE_VISUAL_STEP_DELAY_MS 30u
 #define ROGUE_TEXT_NOTICE_DELAY_MS 1000u
+#define ROGUE_SAVE_NOTICE_DELAY_MS 200u
 void rogue_visual_delay(unsigned int milliseconds);
 
 

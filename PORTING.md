@@ -14,6 +14,27 @@ on each Mac configuration is not documented here.
 For focused reference, see the [original-rules audit](#original-rules-audit).
 The scoring implementation is not re-audited in this consolidation.
 
+### Current fidelity policy (after Stage 28)
+
+The primary goal is to reproduce the reconstructed 1981 Rogue 3.4 **gameplay
+behavior**, rather than modernize the game rules. Memory safety, undefined
+behavior, nonterminating loops and operating-system compatibility still need
+safe solutions, with ordinary in-range behavior and random-number consumption
+preserved wherever possible.
+
+- `potions.c` (`P_CONFUSE`): restored the reconstructed source's behavior.
+  A second confusion potion while already confused does **not** extend the
+  duration, print the initial-confusion message, or draw a random number.
+  The Stage 14 adjustment described below has been superseded.
+- `options.c` (`parse_opts`): restored case-sensitive, first-match prefix
+  abbreviations for option names, including `no` prefixes for boolean options.
+  Modern length bounds and filesystem-safe filename handling remain in place.
+  The Stage 2 exact-name restriction described below has been superseded.
+- Historical Stage 14 and Stage 19 test results remain recorded as originally
+  performed; their earlier repeated-confusion difference no longer describes
+  the current source. This change has not been validated by rerunning those
+  historical suites.
+
 ### Previous changes retained (stages 1 and 1b)
 
 - Replaced PDP-11, SCCS and obsolete termlib build rules with a direct
@@ -1118,7 +1139,6 @@ same order under every circumstance.
 | Internal dungeon size | Fixed at 80×24, even in a larger terminal | Avoid level geometry depending on terminal size; differs from the historical dynamic sizing in larger terminals |
 | Object, trap, stair, player and monster placement | Original random position sampling continues until its 15-bit RNG state repeats; only then is a bounded deterministic search used | Avoid nonterminating loops; randomly unreachable free squares can lead to fallback placements; the original random stream is preserved until a provable cycle |
 | Wandering monsters | Prevent spawning on an existing monster | Correct an occupancy inconsistency; changes those rare outcomes |
-| Confusion potion used while already confused | Extends the existing timeout | Correct an unreachable branch in the reconstructed source; changes timing and RNG consumption in this case |
 | Create-monster scroll | Candidate counter is `int` rather than C11 `_Bool` | Restores count-based reservoir sampling, which `_Bool` would distort |
 | Confused projectile direction | Reroll if both direction components are zero | Prevent an infinite loop; an additional random draw occurs in that exceptional case |
 | Non-weapon melee attack with missing damage string | Uses `0d0` rather than dereferencing NULL | Preserves wielding but specifies previously undefined behavior; may affect damage/bonus interpretation |
@@ -1394,3 +1414,109 @@ Projectile flight and visible continuous movement still use the separate
 `ROGUE_VISUAL_STEP_DELAY_MS` constant (30 ms). No save format, game rule,
 random-number call, score handling, or unsuccessful-save behavior changed.
 The timing has not been measured in a native macOS run for this revision.
+
+
+## Post-stage-28 — historical message fidelity (2026-11-23)
+
+Rogue 3.4 deliberately preserves original English text, including unusual
+wording, punctuation and typographical mistakes.  This is separate from JEC's
+translation and editorial practices. Compared against the reconstructed
+`rogueforge/rogue3.4` source:
+
+- `save.c`: the confirmation prompt is once again exactly
+  `Save file ("%s")? ` (including the space at the end). The existing
+  yes/no input acceptance, atomic write, bounded path, and successful-save
+  `File name: %s` notice with the 1000 ms display hold remain unchanged.
+  The original filename-entry path for an empty preset filename has not
+  been restored; that is a separate interaction-compatibility question.
+- `save.c`: removed the additional `Game restored.` message so restoring
+  directly resumes the saved screen, as in the reconstructed original.
+- `command.c`: a failed child `execl()` once again uses the original
+  `perror("No shelly")` text (typo intentionally retained). New errors
+  for `fork`, signal handling and privilege changes remain as safety and
+  modern-OS diagnostics.
+- `potions.c`: an enchanted *held non-weapon* uses the original
+  `Your %s glows blue for a moment.` message whenever its `o_which`
+  is a valid `w_names` index. The original code could read outside that
+  array for certain non-weapons; the guard keeps this memory-safety fix,
+  and an invalid index produces no substitute invented game message.
+  Enchantment, uncursing and RNG consumption are unchanged.
+
+No changes were made to the score file representation, tombstone year,
+post-game Return-key prompts, 1000 ms startup/successful-save notices,
+terminal handling, save-file format or gameplay rule data. The former
+remain intentional portability/display differences to audit separately.
+
+**Verification:** The three changed C files passed GCC and Clang C11 syntax
+checks with a temporary, test-only minimal curses declaration header. A
+source-to-source archive comparison confirmed that only those three C files
+and this history document changed. The test header is not distributed. A
+normal build and interactive terminal playthrough remain unverified in this
+environment because the ncurses development headers are unavailable.
+
+
+## Post-stage-28 — original save filename selection and 200 ms notice (2026-11-23)
+
+The previous `save_game()` treated `n` as a cancellation and disallowed
+interactive name selection. Restored the reconstructed 1981 `save.c` flow:
+
+- When a preset save filename exists, `S` asks `Save file ("%s")? `;
+  `y`/`Y` selects that name, `n`/`N` enters a new name, rather than quitting.
+- When no filename is preset, prompt `File name: ` directly.
+- After a file I/O failure, report the failure and permit entering another
+  filename. Escape during filename entry cancels the save, as before.
+  Interactive entry remains bounded (original 80-byte input buffer)
+  and uses the existing safe filename setter.
+- The historical `File name: %s` notice is now displayed **before** the
+  atomic save operation, not after successful writing. It is refreshed
+  immediately. A monotonic clock measures elapsed time since it appeared;
+  only any remaining time to reach 200 ms is slept. A slow write incurs
+  no additional artificial pause. Failed attempts also hold the notice
+  briefly before showing the error and offering another filename.
+- The greeting retains its independent 1000 ms delay; game mechanics, RNG,
+  portable save format (`R34SAV01`), integrity checks, atomic replacement,
+  and save consumption on restore are unchanged.
+
+Historical earlier stage entries describing the 1000 ms post-success save
+notice remain as development history, not the current specification.
+
+**Verification of this revision (Linux, 2026-11-23):** GCC and Clang C11
+syntax checks with warnings as errors passed for `save.c`. A full GCC build
+and link succeeded using a **test-only curses declaration header** and the
+system ncurses/tinfo and crypt runtime libraries (the system's real curses
+development headers are unavailable). PTY interaction tests covered `S,y`,
+`S,n` with a new name, no preset filename, failed save followed by error
+acknowledgement and a new name, Escape cancellation, and a save/restore
+round trip. In the four successful save cases the terminal's filename-notice
+to-exit interval measured approximately 0.201–0.202 s. A separate TEST-ONLY
+build injecting a 350 ms delay after the filename notice completed after
+approximately 0.353 s, demonstrating that the minimum is total elapsed time,
+not an additional post-save delay. The fake header and injected delay are
+**not** part of the distributed source; native macOS testing remains to be
+done.
+
+
+## Post-stage-28 — original save directory and score basename (2026-11-23)
+
+For the historical-behavior-focused Rogue 3.4 port (separate from JEC):
+
+- Restored the original effective default save filename `rogue.save` **relative
+  to the game's current working directory**.  The reconstructed 1981
+  `main.c` first copies `home` but immediately overwrites that path with
+  `rogue.save`.  Explicit filenames from `ROGUEOPTS`, in-game `o` options,
+  `S` filename entry, and named restore arguments remain supported.
+  `./rogue -r` now refers to the current directory's `rogue.save` by default.
+- Restored the original score **basename** `.rogue_roll`, while deliberately
+  keeping the modern per-user score directory (`~/.rogue_roll`) rather than
+  the original shared `/usr/public/.rogue_roll`.  Multi-user score sharing
+  is deferred; no build-time filename options were added.
+- The score-path formatter now rejects an overlong HOME path explicitly
+  instead of silently writing the score file to the working directory.
+- Historical mentions of `~/rogue.save` and `~/.rogue34.scr` in earlier
+  stages above are retained as a record of those earlier implementation
+  states, not as descriptions of the current defaults.
+
+The save-file format `R34SAV01`, atomic save/restore, score serialization,
+file locking, original save-name selection, 200 ms save notice and all game
+rules remain unchanged.  Historical `rogue.doc`, `rogue.6` and `rogue.r`
+are unmodified.

@@ -52,8 +52,12 @@ const char *rogue_score_path(void)
     static char path[1024];
     const char *h = getenv("HOME");
     if (h == NULL || *h == '\0') h = ".";
-    if (snprintf(path, sizeof path, "%s/.rogue34.scr", h) >= (int)sizeof path)
-        return "rogue34.scr";
+    /* Keep the original score basename, without requiring the historical
+     * shared /usr/public directory on modern per-user installations. */
+    if (snprintf(path, sizeof path, "%s/.rogue_roll", h) >= (int)sizeof path) {
+        errno = ENAMETOOLONG;
+        return NULL; /* Never silently switch the destination directory. */
+    }
     return path;
 }
 

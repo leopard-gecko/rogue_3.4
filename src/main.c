@@ -66,11 +66,10 @@ main(int argc, char **argv, char **envp)
         }
     }
 
-    if (snprintf(file_name, sizeof file_name, "%srogue.save", home) >=
-        (int)sizeof file_name) {
-        fprintf(stderr, "Rogue 3.4: HOME path is too long for the save name.\n");
-        return 1;
-    }
+    /* The reconstructed 1981 main.c ultimately overwrites its HOME-based
+     * candidate with the relative name "rogue.save".  Preserve that default:
+     * the game starts in the caller's current working directory. */
+    strcpy(file_name, "rogue.save");
 
     if ((env = getenv("ROGUEOPTS")) != NULL && parse_opts(env) != 0) {
         fprintf(stderr, "Rogue 3.4: ROGUEOPTS save filename is too long.\n");

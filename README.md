@@ -100,7 +100,7 @@ terminal becomes smaller during play, the game pauses until it is enlarged.
 
 ## Playing, saving and scores
 
-For detailed instructions, see the original guide,
+For detailed instructions, see the original English guide,
 [A Guide to the Dungeons of Doom (rogue.doc)](src/rogue.doc).
 It explains the goal of the game, screen symbols, commands, items, and combat.
 
@@ -111,7 +111,7 @@ It explains the goal of the game, screen symbols, commands, items, and combat.
 | Move | `h`, `j`, `k`, `l` (diagonals: `y`, `u`, `b`, `n`) |
 | Show inventory | `i` |
 | Open options | `o` |
-| Save and exit | `S`, then confirm with `y` |
+| Save and exit | `S`: `y` uses the shown filename; `n` lets you enter a new filename |
 | Resume the default save | `./rogue -r` |
 | Resume a named save | `./rogue /path/to/savefile` |
 | Show scores | `./rogue -s` |
@@ -119,10 +119,12 @@ It explains the goal of the game, screen symbols, commands, items, and combat.
 | Suspend and resume | `Ctrl-Z`, then `fg` in the shell |
 | Open an interactive shell | `!`, then `exit` to return |
 
+When saving, `File name: ...` is shown **before** writing and remains visible for at least 200 ms, including the time taken to save. If the write fails, enter another filename to retry; press Escape during filename entry to return to the game without saving. If no filename is preset, the game asks you to enter one.
+
 The current defaults are:
 
-- Save: `~/rogue.save`
-- Scores: `~/.rogue34.scr`
+- Save: `./rogue.save` (in the directory where `rogue` is started)
+- Scores: `~/.rogue_roll` (per user; shared rankings are not implemented)
 - Save format: versioned `R34SAV01` (not compatible with the historical
   process-memory save format)
 
@@ -136,6 +138,9 @@ For example, specify a filename under HOME with `ROGUEOPTS`:
 ```sh
 ROGUEOPTS='file=~/mygame.save' ./rogue
 ```
+
+As in the original, option names may be abbreviated to their initial letters.
+For example, `ROGUEOPTS='ter,noflu'` is equivalent to `terse,noflush`.
 
 A successful normal restore consumes the save file.
 

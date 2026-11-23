@@ -111,7 +111,7 @@ score_wait_on_screen(void)
  *
  * All entries are parsed before updating.  A damaged or unknown version is
  * never overwritten.  The per-user file is advisory-locked for the entire
- * read/modify/write.  The score path is ~/.rogue34.scr.
+ * read/modify/write.  The per-user score path is ~/.rogue_roll.
  */
 #define SCORE_MAGIC "ROGUE34-SCORES-1\n"
 #define SCORE_COUNT 10
@@ -238,6 +238,11 @@ score(int amount, int flags, char monst)
     int exists = 1;
     FILE *fp = NULL;
     const char *path = rogue_score_path();
+
+    if (path == NULL) {
+        fprintf(stderr, "Rogue 3.4: score file path is too long.\n");
+        return -1;
+    }
 
     /* A read-only -s does not create or rewrite a score file. */
     fd = open(path, writing ? (O_RDWR | O_CREAT | O_NOFOLLOW) : (O_RDONLY | O_NOFOLLOW), 0600);
