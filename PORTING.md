@@ -1520,3 +1520,47 @@ The save-file format `R34SAV01`, atomic save/restore, score serialization,
 file locking, original save-name selection, 200 ms save notice and all game
 rules remain unchanged.  Historical `rogue.doc`, `rogue.6` and `rogue.r`
 are unmodified.
+
+
+## Post-stage-28 — aggravate-monsters scroll null destination safety (2026-11-26)
+
+In `src/potions.c`, `S_AGGR` originally marked every current-level monster
+`ISRUN` without necessarily assigning a destination. A newly generated
+monster may have `t_dest == NULL`, but `do_chase()` unconditionally
+dereferences `t_dest`; reading the scroll could therefore crash. The
+1981 reconstructed source contains this same defect.
+
+Before setting `ISRUN`, the scroll now sets `t_dest = &hero` **only when**
+`t_dest` was null. Existing destinations and every other monster flag are
+unchanged. The original scroll message, identification, effect scope,
+and RNG usage remain unchanged. This is a memory-safety fix, not a change
+to the original game rules.
+
+**Verification (2026-11-26):** GCC and Clang C11 `-Wall -Wextra -Wpedantic -Werror`
+syntax checks passed for `potions.c` using test-only curses declarations.
+A standalone C test executing the actual `S_AGGR` monster loop passed
+under both compilers with undefined-behavior sanitization: a null
+destination is initialized, an existing destination is preserved, other
+flags remain intact, and an empty list or repeated use is safe. The
+test scaffolding is not distributed. A full native build and interactive
+gameplay test have not been performed in this environment.
+
+## Post-stage-28 — Leprechaun death in a corridor (2026-11-26)
+
+Rogue 3.4's `fight.c` dereferenced `roomin(mp)` without checking its
+result when a leprechaun was defeated. `roomin()` returns `NULL` for
+a corridor square, so killing a leprechaun there could crash.
+
+Following the narrow guard already present in the reconstructed Rogue
+3.6 `fight.c`, the 3.4 port now tests the room pointer and skips **only
+the leprechaun's gold-creation case** when it is null. Monster defeat,
+experience credit and the shared monster removal code still proceed.
+In-room gold placement and quantity, saving-throw logic, message text
+and RNG consumption remain identical to this port's prior version.
+No corridor-gold subsystem was added: gold in Rogue 3.4 belongs to rooms.
+The existing safety changes and historic `rogue.doc`, `rogue.6`,
+`rogue.r` are untouched.
+
+Verification: the change was checked against the reconstructed Rogue
+3.6 implementation; syntax checks and targeted corridor-versus-room
+behavior tests were performed. Native macOS gameplay is still untested.

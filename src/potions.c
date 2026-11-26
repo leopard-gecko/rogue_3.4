@@ -439,6 +439,10 @@ read_scroll(void)
 		for (mi = mlist; mi != NULL; mi = next(mi))
 		{
 		    register struct thing *mtp = (struct thing *) ldata(mi);
+		    /* do_chase() dereferences t_dest. Newly created monsters
+		       may have no destination until they begin chasing. */
+		    if (mtp->t_dest == NULL)
+			mtp->t_dest = &hero;
 		    mtp->t_flags |= ISRUN;
 		}
 	    }

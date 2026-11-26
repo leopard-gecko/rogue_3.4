@@ -93,7 +93,13 @@ fight(coord *mp, char mn, struct object *weap, bool thrown)
 		{
 		    register struct room *rp;
 
-		    if ((rp = roomin(mp))->r_goldval == 0)
+		    /* As in Rogue 3.6, corridor deaths have no room
+		       in which to store gold.  Keep the original
+		       in-room gold logic unchanged. */
+		    rp = roomin(mp);
+		    if (rp == NULL)
+			break;
+		    if (rp->r_goldval == 0)
 		    {
 			rp->r_gold = *mp;
 		    }
